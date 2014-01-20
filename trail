@@ -1,0 +1,120 @@
+#!/usr/bin/perl -w
+
+# Color replacement for tail(1)
+# by Chris Hart
+
+use strict;
+use Getopt::Long;
+
+my ($d,$f,$h,$n,$s,$file,@order);
+
+GetOptions(
+	'd=s' => \$d,
+	'f=s' => \$f,
+	'h!'  => \$h,
+	'help!' => \$h,
+	'n=i' => \$n,
+	's=s' => \$s,
+	);
+
+$d = ' ' unless ( $d );
+
+&Usage if ( $h );
+&Usage unless ( @ARGV );
+
+if ( $f )
+{
+	$file = $f;
+}
+elsif ( $n )
+{
+	$file = $ARGV[-1];
+}
+else
+{
+	$n = 10;
+	$file = $ARGV[-1];
+}
+
+if ( $s )
+{
+	@order = split /,/, $s
+}
+else
+{
+	@order = ( 'r','o','y','g','c','i','b','v','p' );
+}
+
+my %color = &colors;
+$file = '' unless ($file);
+my $cmd = '/usr/bin/tail';
+my @args = ( ( $f ) ? '-f' : "-n$n", $file );
+#$cmd .= ( $f ) ? '-f ' : "-n $n ";
+#$cmd .= "$file";
+
+open ( CMD, "-|", $cmd, @args);
+
+	while ( <CMD> )
+	{
+		my $c = 0;
+		chomp $_;
+		my @elems = split /$d/, $_;
+		my $string;
+
+		foreach my $elem ( @elems )
+		{
+			$c = 0 unless ( $order[$c] );
+			$string .= $color{$order[$c]};
+			$string .= "$elem$d";
+			$c++;
+		}
+
+		if ( $string )
+		{
+			$string =~ s/$d$//;
+			print $string . "\n";
+		}
+	}
+
+close ( CMD );
+print "\033[0m";
+
+sub colors
+{
+	return (
+		'r'  => "\033[0;31m",
+		'lr' => "\033[1;31m",
+		'o'  => "\033[0;33m",
+		'y'  => "\033[1;33m",
+		'g'  => "\033[0;32m",
+		'lg' => "\033[1;32m",
+		'b'  => "\033[0;34m",
+		'i'  => "\033[1;34m",
+		'v'  => "\033[1;35m",
+		'p'  => "\033[0;35m",
+		'c'  => "\033[1;36m",
+	);
+}
+
+sub Usage
+{
+	die "
+Usage: $0 [OPTIONS] [FILE]
+
+	[OPTIONS]
+	-n	(NUM) Number of lines to trail (tail -n)
+	-f	(FOLLOW/FILE) Continuously trail a file (tail -f)
+		(FILE should always follow this argument
+
+	-s	(OPTIONAL)(SYNTAX) Comma-delimited color ordering
+		(i.e. -s 'r,o,y,g,b,v,p')
+	-d	(OPTIONAL)(DELIMITER) Defaults to single-space
+	-h	(HELP) This usage message
+
+A color wrapper for tail(1),
+by Chris Hart
+
+For additional help see `tail --help`
+\n";
+
+}
